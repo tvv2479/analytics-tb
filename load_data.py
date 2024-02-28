@@ -8,7 +8,7 @@ import pandas as pd
 import configparser
 
 config = configparser.ConfigParser()
-config.read("E:/Projects/tb/Analytics/config.ini")
+config.read('E:/Projects/tb/Analytics/config.ini')
 
 # Подключение к базе аналитики
 
@@ -26,9 +26,9 @@ engine = create_engine(f'postgresql+psycopg2://{BdAnalisUser}:{BdAnalisPass}@{Bd
 
 def dataSite(sql):
     '''
-    Функция получает данные из источника site.\n
+    Функция получает данные из источника.\n
     dataSite(sql)\n
-    sql - запрос к базе для получения данных для выгрузки.
+    sql - запрос к базе для получения данных.
     '''
     
     try:
@@ -38,3 +38,5 @@ def dataSite(sql):
     
     return res
 
+
+# %%
