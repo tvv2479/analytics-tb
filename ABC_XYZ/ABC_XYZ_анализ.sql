@@ -11,7 +11,7 @@ with orders as (
      select order_id,
             date_update::date
        from site_update_order2
-      where date_update::date between current_date - 90 and current_date - 1 
+      where date_update::date between '2023-12-03' and '2024-03-02'
             and status_id  in ('F', 'SP')
             ),
             tovar as (
@@ -37,7 +37,7 @@ with orders as (
                    	         when product_type = 'платье-рубашка' then 'платье'
                    	         when product_type = 'платье-сарафан' then 'платье'
                    	         when product_type = 'платье-туника' then 'платье'
-                   	         when product_type = 'комплект  с юбкой' then 'комплект с юбкой'
+                   	         when product_type = 'комплект  с юбкой' then 'костюм с юбкой'
                    	         when product_type = 'блузка' then 'блуза'
                    	         when product_type = 'блуза двухсторонняя' then 'блуза'
                       	     when product_type = 'пальто-бомбер' then 'бомбер'
