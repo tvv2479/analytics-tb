@@ -6,6 +6,7 @@
   может "жить" всего несколько месяцев*/
 
 with orders as (
+     -- Готовим данные
      -- Все закрытые (оплаченные) заказы за период времени
      select order_id,
             date_update::date
@@ -14,78 +15,80 @@ with orders as (
             and status_id  in ('F', 'SP')
             ),
             tovar as (
-            -- Уникальные типы товаров из корзин по каждому заказу 
-            select distinct lower(trim(both from product_type)) as tovar_name
+            -- Товары в каждом заказе
+            select order_id,
+                   date_update::date,
+                   "name",
+                   lower(trim(both from product_type)) as product_type,
+                   product_size,
+                   price
               from site_update_basket
              where order_id in (select order_id from orders)
                    and product_type is not null
                        and product_type != ''
                    ),
-                   prodagi as (
-                   -- Выручка и количество по каждому типу товаров
-                   select lower(trim(both from product_type)) as tovar_name,
-                          coalesce(count(product_type), 0) as kol_prodano,
-                          sum(price) as viruchka
-                     from site_update_basket 
-                    where order_id in (select order_id from orders)
-                    group by 1
-                    order by 2 desc
-                         ),
-                         prod_sort as (
-                         -- Продажи по каждому типу товаров (количество, выручка). 
-                         -- Доходности нет т.к. отсутствуют данные по себестоимости.
-                         select t.tovar_name,
-                              coalesce(kol_prodano, 0) as kol_prodano,
-                              coalesce(viruchka, 0) as viruchka
-                         from tovar as t
-                         left join prodagi as p
-                              on t.tovar_name = p.tovar_name
-                         order by 2 desc
-                              ),
-                              kol as (
-                              -- Считаем процент от общего количества и суммы по каждому типу товаров.
-                              select tovar_name,
-                                   kol_prodano,
-                                   viruchka,
-                                   kol_prodano / sum(kol_prodano) over() as rel_kol,
-                                   viruchka / sum(viruchka) over() as rel_viruchka
-                              from prod_sort
-                                   ),
-                                   cumsum as (
-                                   -- Считаем накопительный итог по процентам от общего количества
-                                   select tovar_name,
-                                             kol_prodano,
-                                             viruchka,
-                                             sum(rel_kol) over(order by rel_kol desc) as cum_sum_kol,
-                                             sum(rel_viruchka) over(order by rel_viruchka desc) as cum_sum_viruchka
-                                        from kol
-                                             ),
-                                             ABC_group as (
-                                             -- Присваиваем группы ABC по количеству и по выручке
-                                             select tovar_name,
-                                                  kol_prodano,
-                                                  viruchka,
-                                                  case 
-                                                       when cum_sum_kol <= 0.8 then 'A'
-                                                       when cum_sum_kol <= 0.95 then 'B'
-                                                       else 'C'
-                                                  end as ABC_kol,
-                                                  case 
-                                                       when cum_sum_viruchka <= 0.8 then 'A'
-                                                       when cum_sum_viruchka <= 0.95 then 'B'
-                                                       else 'C'
-                                                  end ABC_viruchka
-                                             from cumsum
-                                                  )
-                                                  select tovar_name,
-                                                            kol_prodano,
-                                                            viruchka, 
-                                                            ABC_kol||ABC_viruchka as abc,
-                                                            case 
-                                                            when stddev_pop(kol_prodano) over(order by kol_prodano desc) / avg(kol_prodano) over() <= 0.1 then 'X'
-                                                            when stddev_pop(kol_prodano) over(order by kol_prodano desc) / avg(kol_prodano) over() <= 0.25 then 'Y'
-                                                            else 'Z'
-                                                            end as xyz
-                                                       from ABC_group;
-                                                
+                   tovar_name as (
+                   -- Упорядывачиваем тип  товаров
+                   select order_id,
+                          date_update,
+                          "name",
+                          case 
+                   	         when product_type = 'платье-кафтан' then 'платье'
+                   	         when product_type = 'платье-рубашка' then 'платье'
+                   	         when product_type = 'платье-сарафан' then 'платье'
+                   	         when product_type = 'платье-туника' then 'платье'
+                   	         when product_type = 'комплект  с юбкой' then 'комплект с юбкой'
+                   	         when product_type = 'блузка' then 'блуза'
+                   	         when product_type = 'блуза двухсторонняя' then 'блуза'
+                      	     when product_type = 'пальто-бомбер' then 'бомбер'
+                   	         when product_type = 'брючный комплект' then 'брючный костюм'
+                   	         when product_type = 'комплект с юбкой' then 'костюм с юбкой'
+                   	         else product_type
+                          end as name_type,
+                          price
+                     from tovar
+                          ),
+                          abc_sales as (
+                          -- Выручка и количество по каждому типу товаров
+                          select name_type,
+                                 sum(price) as revenue,
+                                 coalesce(count(name_type), 0) as amount
+                            from tovar_name
+                           group by name_type
+                           order by 3 desc
+                                 ),
+                                 xyz_sales as (
+                                 select name_type,
+                                        to_char(date_update, 'YYYY-WW') as ym,
+                                        count(name_type) as sales
+                                   from tovar_name
+                                  group by name_type, 2
+                                  order by 2
+                                        ),
+                                        xyz_analysis as (
+                                        select name_type,
+                                               case
+                                                 when stddev_samp(sales)/avg(sales) <= 0.75 then 'Z'
+                                                 when stddev_samp(sales)/avg(sales) <= 0.9 then 'Y'
+                                                 else 'X'
+                                               end xyz_sales
+                                          from xyz_sales
+                                         group by name_type
+                                               )
+                                               select s.name_type,
+                                                      case
+                                                        when sum(amount) over(order by amount desc) / sum(amount) over() <= 0.8 then 'A'
+                                                        when sum(amount) over(order by amount desc) / sum(amount) over() <= 0.95 then 'B'
+                                                      else 'C'
+                                                      end as amount_ABC,
+                                                      case
+                                                        when sum(revenue) over(order by revenue desc) / sum(revenue) over() <= 0.8 then 'A'
+                                                        when sum(revenue) over(order by revenue desc) / sum(revenue) over() <= 0.95 then 'B'
+                                                      else 'C'
+                                                      end as revenue_ABC,
+                                                      xyz.xyz_sales
+                                                 from abc_sales s
+                                                      left join xyz_analysis xyz
+                                                           on s.name_type = xyz.name_type
+                                                order by name_type;
                                                 

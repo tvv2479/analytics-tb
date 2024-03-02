@@ -1,17 +1,11 @@
-
 #%%
-from sqlalchemy import text
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+# ПОЛУЧАЕМ ДАННЫЕ ИЗ БАЗЫ
+
 from datetime import datetime, timedelta
-import psycopg2
 import pandas as pd
-import configparser
 import os
 import sys
-import scipy as sp
-import numpy as np
-import statistics as st
+import plotly.express as px
 
 sys.path.append(os.path.abspath('..'))
 from load_data import dataSite
@@ -36,16 +30,19 @@ with orders as (
                    price
               from site_update_basket sub 
              where order_id in (select order_id from orders)
-                   and product_type is not null
-                       and product_type != '';
+                        and product_type is not null
+                            and product_type != ''
+                                and name not like '%%ПОДАРОК%%';
 '''
 
 
 orders = dataSite(sql)
 
-# Очитстка данных. В названиях типов товаров есть лишние символы.
-# Нужно удалить лишние символы и привести к общему виду
+# ОЧИСТКА ДАННЫХ. 
+# В названиях типов товаров есть лишние символы.
+# Нужно удалить лишние символы и привести к общему виду.
 
+# Убираем лишние пробелы и переводим в нижний регистр
 orders['product_type'] = orders['product_type'].str.strip(' ').str.lower()
 
 # Замена названий типов на общепонятное.
@@ -57,15 +54,13 @@ orders['product_type'] = orders['product_type'].replace(['комплект  с �
                                                          'платье', 'платье', 'платье', 'бомбер', 
                                                          'брючный костюм', 'костюм с юбкой'])
 
-types = list(set(orders['product_type']))
-
 # Группировка по типу продукта и расчёт количества и суммы
 or_tab = orders[['product_type', 'price']]
 ord_t = or_tab.groupby(['product_type'])['price'] \
 .agg(revenue ='sum', amount='count') \
 .sort_values(by = 'amount', ascending=False)
 
-# Расчёт ABC анализа
+# СЧИТАЕМ ABC
 
 groupt_df = ord_t.copy()
 columns = ['revenue', 'amount']
@@ -81,7 +76,48 @@ for col in columns:
 abc_groupt = groupt_df[['revenue',	'amount', 'abc_amount', 'abc_revenue']]
 abc_groupt['abc'] = abc_groupt['abc_amount'] + abc_groupt['abc_revenue']
 
-df = abc_groupt[['revenue', 'amount', 'abc']]
-df
+df_abc = abc_groupt[['revenue', 'amount', 'abc']].reset_index()
+df_abc
 
+# СЧИТАЕМ XYZ
+
+# делаем дату без времени
+orders['date'] = orders['date_update'].apply(lambda x: x.strftime('%Y-%m-%d'))
+orders['year'] = orders['date_update'].apply(lambda x: x.strftime('%Y'))
+orders['week'] = orders['date'].apply(lambda x: datetime.strptime(x, ('%Y-%m-%d')).isocalendar().week)
+
+df = orders[['product_type', 'year', 'week']]
+# Смотрим сколько раз покупали в каждый день
+df_sales = df.groupby(['product_type', 'year', 'week'])['product_type'].agg(sales='count').reset_index()
+
+# df_sal = df_sales[df_sales['sales'] >= 4]
+
+# Считаем XYZ
+# Находим стандиртное отклонение и среднее знячения
+df_group = df_sales.groupby(['product_type'])['sales'].agg(standotkl='std', srednee='mean').reset_index()
+# Получаем % (стандартное отклонение  / среднее)
+df_group['prots'] = df_group['standotkl'] / df_group['srednee']
+# Присваиваем значения по условию
+df_group['xyz'] = df_group['prots'].apply(lambda x: 'Z' if x <= 0.75 else ('Y' if x <= 0.9 else 'X'))
+
+df_xyz = df_group[['product_type', 'xyz']]
+
+# ОБЪЕДИНЯЕМ В ABC-XYZ АНАЛИЗ
+
+# Объединяем
+df.abc_xyz = df_abc.merge(df_xyz, left_on='product_type', right_on='product_type')
+
+df.abc_xyz['abc-xyz'] = df.abc_xyz['abc'] + df.abc_xyz['xyz']
+# Оставляем количество покупок не менне 4х
+df.abc_xyz = df.abc_xyz[df.abc_xyz['amount'] > 4]
+
+abc_xyz = df.abc_xyz.groupby('abc-xyz')['abc-xyz'].agg(kol='count').reset_index()
+
+# ВИЗУАЛИЗАЦИЯ
+fig = px.treemap(abc_xyz, path=['abc-xyz'], values = 'kol')
+fig.show()
+
+#%%
+
+df.abc_xyz
 # %%
