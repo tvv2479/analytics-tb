@@ -37,10 +37,11 @@ with orders as (
                    	         when product_type = 'платье-рубашка' then 'платье'
                    	         when product_type = 'платье-сарафан' then 'платье'
                    	         when product_type = 'платье-туника' then 'платье'
+                             when product_type = 'сарафан' then 'платье'
                    	         when product_type = 'комплект  с юбкой' then 'костюм с юбкой'
                    	         when product_type = 'блузка' then 'блуза'
                    	         when product_type = 'блуза двухсторонняя' then 'блуза'
-                      	     when product_type = 'пальто-бомбер' then 'бомбер'
+                      	    when product_type = 'пальто-бомбер' then 'бомбер'
                    	         when product_type = 'брючный комплект' then 'брючный костюм'
                    	         when product_type = 'комплект с юбкой' then 'костюм с юбкой'
                    	         else product_type
