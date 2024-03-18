@@ -41,7 +41,7 @@ with orders as (
                    	         when product_type = 'комплект  с юбкой' then 'костюм с юбкой'
                    	         when product_type = 'блузка' then 'блуза'
                    	         when product_type = 'блуза двухсторонняя' then 'блуза'
-                      	    when product_type = 'пальто-бомбер' then 'бомбер'
+                      	     when product_type = 'пальто-бомбер' then 'бомбер'
                    	         when product_type = 'брючный комплект' then 'брючный костюм'
                    	         when product_type = 'комплект с юбкой' then 'костюм с юбкой'
                    	         else product_type
@@ -51,32 +51,32 @@ with orders as (
                           ),
                           abc_sales as (
                           -- Выручка и количество по каждому типу товаров
-                          select name_type,
+                          select name,
                                  sum(price) as revenue,
-                                 coalesce(count(name_type), 0) as amount
+                                 coalesce(count(name), 0) as amount
                             from tovar_name
-                           group by name_type
+                           group by name
                            order by 3 desc
                                  ),
                                  xyz_sales as (
-                                 select name_type,
+                                 select name,
                                         to_char(date_update, 'YYYY-WW') as ym,
-                                        count(name_type) as sales
+                                        count(name) as sales
                                    from tovar_name
-                                  group by name_type, 2
+                                  group by name, 2
                                   order by 2
                                         ),
                                         xyz_analysis as (
-                                        select name_type,
+                                        select name,
                                                case
-                                                 when stddev_samp(sales)/avg(sales) <= 0.75 then 'Z'
-                                                 when stddev_samp(sales)/avg(sales) <= 0.9 then 'Y'
-                                                 else 'X'
+                                                 when stddev_samp(sales)/avg(sales) <= 0.1 then 'X'
+                                                 when stddev_samp(sales)/avg(sales) <= 0.25 then 'Y'
+                                                 else 'Z'
                                                end xyz_sales
                                           from xyz_sales
-                                         group by name_type
+                                         group by name
                                                )
-                                               select s.name_type,
+                                               select s.name,
                                                       case
                                                         when sum(amount) over(order by amount desc) / sum(amount) over() <= 0.8 then 'A'
                                                         when sum(amount) over(order by amount desc) / sum(amount) over() <= 0.95 then 'B'
@@ -90,6 +90,8 @@ with orders as (
                                                       xyz.xyz_sales
                                                  from abc_sales s
                                                       left join xyz_analysis xyz
-                                                           on s.name_type = xyz.name_type
-                                                order by name_type;
+                                                           on s.name = xyz.name
+                                                where s.name not like '%ПОДАРОК%'
+                                                      and s.name not like '%ОТКРЫТКА%'
+                                                order by name;
                                                 
