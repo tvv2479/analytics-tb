@@ -81,7 +81,7 @@ abc_groupt = groupt_df[['revenue',	'amount', 'abc_amount', 'abc_revenue']]
 abc_groupt['abc'] = abc_groupt['abc_amount'] + abc_groupt['abc_revenue']
 
 df_abc = abc_groupt[['revenue', 'amount', 'abc']].reset_index()
-df_abc
+df_abc.head()
 # %%
 
 # СЧИТАЕМ XYZ
@@ -106,6 +106,7 @@ df_group['prots'] = df_group['standotkl'] / df_group['srednee']
 df_group['xyz'] = df_group['prots'].apply(lambda x: 'X' if x <= 0.1 else ('Y' if x <= 0.25 else 'Z'))
 
 df_xyz = df_group[['name', 'xyz']]
+df_xyz.head()
 #%%
 # ОБЪЕДИНЯЕМ В ABC-XYZ АНАЛИЗ
 
@@ -125,6 +126,6 @@ fig = px.treemap(abc_xyz, path=['abc-xyz'], values = 'kol')
 fig.show()
 # %%
 # ABC-XYZ анализ в таблице
-df.abc_xyz
+df.abc_xyz.head()
 
 # %%
