@@ -57,10 +57,10 @@ with count_clients as (
                                                              ),
                                                              sigm as (
                                                              -- считаем средний размах, сигму и откладываем 6 сигм
-                                                             select sum(month_t) / max(ser) as avg_razmah,
+                                                             select avg(month_t) as avg_razmah,
                                                                     -- Применяем коэффициэнты из контрольных карт Шухарта для 5 месяцев 
                                                                     -- https://meganorm.ru/Data2/1/4294819/4294819315.pdf                                   
-                                                                    round((sum(month_t) / max(ser)) / 2.326 , 2) as sigma,
+                                                                    round(avg(month_t) / 2.326 , 2) as sigma,
                                                                     (select srednee_feb from february) as avg_feb,
                                                                     (select srednee_feb from february) + round((sum(month_t) / max(ser)) / 2.326, 2) as sigma_1,
                                                                     (select srednee_feb from february) + round((sum(month_t) / max(ser)) / 2.326, 2)*2 as sigma_2,

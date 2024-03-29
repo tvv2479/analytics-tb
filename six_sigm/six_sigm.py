@@ -59,12 +59,12 @@ avg_feb = round(feb['kol'].mean(), 2)
 mes = [diff_kol_oct, diff_kol_nov, diff_kol_dec, diff_kol_jan, diff_kol_feb]
 avg_razmah = np.average(mes)
 
+
 # Считаем сигму
-# Сумму размахов за каждый месяц делим на корличество месяцев.
-# И результат делим на значенин d2 карт Шухарта. Значение за 5 месяцев.
+# Средний размах делим на d2 из контрольных карт Шухарта.
 # https://meganorm.ru/Data2/1/4294819/4294819315.pdf 
 
-sigma = avg_razmah / 5
+sigma = avg_razmah / 2.326
 
 # Откладываем 6 сигм от среднего значения за февраль
 sigma_1 = round(avg_feb - (sigma * 3), 2)
@@ -111,3 +111,5 @@ plt.annotate('sigma 4', xy=(s1, sigma_4))
 plt.annotate('sigma 5', xy=(s1, sigma_5))
 plt.annotate('sigma 6', xy=(s1, sigma_6))
 
+
+# %%
